@@ -8,7 +8,6 @@ import java.net.ServerSocket;
 
 import org.apache.http.HttpConnectionFactory;
 import org.apache.http.HttpServerConnection;
-import org.apache.http.HttpStatus;
 import org.apache.http.impl.DefaultBHttpServerConnection;
 import org.apache.http.impl.DefaultBHttpServerConnectionFactory;
 import org.apache.http.protocol.BasicHttpContext;
@@ -21,30 +20,15 @@ import org.apache.http.protocol.ResponseContent;
 import org.apache.http.protocol.ResponseDate;
 import org.apache.http.protocol.ResponseServer;
 import org.apache.http.protocol.UriHttpRequestHandlerMapper;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * @author Steven
  *
  */
 public class HttpServer{
-	public static final void main(final String[] args) throws IOException{
-		final HttpServer httpServer = new HttpServer(80);
-		final FileRequestHandler fileRequestHandler = new FileRequestHandler("/index.html");
-		httpServer.setRequestHandler((request, response, context) -> {
-			try{
-				final String uri = request.getRequestLine().getUri();
-				if(uri.startsWith("/cmd")){
-				}else{
-					fileRequestHandler.handle(request, response, context);
-				}
-			}catch(final Exception e){
-				response.setStatusCode(HttpStatus.SC_INTERNAL_SERVER_ERROR);
-				response.setEntity(null);
-			}
-		});
-		httpServer.start();
-	}
-
+	private static final Logger LOG = LogManager.getLogger();
 	private final int port;
 	private final UriHttpRequestHandlerMapper mapper;
 
@@ -62,41 +46,41 @@ public class HttpServer{
 				try{
 					new Thread(new Worker(httpService, connectionFactory.createConnection(serverSocket.accept()))).start();
 				}catch(final Exception e){
-					e.printStackTrace();
+					HttpServer.LOG.error("Cannot start a worker thread.", e);
 					break;
 				}
 			}
 			try{
 				serverSocket.close();
 			}catch(final IOException e){
-				e.printStackTrace();
+				HttpServer.LOG.error("Cannot close server socket.", e);
 			}
 		}).start();
 	}
 	public void setRequestHandler(final HttpRequestHandler requestHandler){
 		this.mapper.register("*", requestHandler);
 	}
-}
 
-class Worker implements Runnable{
-	private final HttpService httpService;
-	private final HttpServerConnection connection;
+	private static class Worker implements Runnable{
+		private final HttpService httpService;
+		private final HttpServerConnection connection;
 
-	Worker(final HttpService httpService, final HttpServerConnection connection){
-		this.httpService = httpService;
-		this.connection = connection;
-	}
-	@Override
-	public void run(){
-		try{
-			this.httpService.handleRequest(this.connection, new BasicHttpContext());
-		}catch(final Exception e){
-			e.printStackTrace();
-		}finally{
+		Worker(final HttpService httpService, final HttpServerConnection connection){
+			this.httpService = httpService;
+			this.connection = connection;
+		}
+		@Override
+		public void run(){
 			try{
-				this.connection.shutdown();
-			}catch(final IOException e){
-				e.printStackTrace();
+				this.httpService.handleRequest(this.connection, new BasicHttpContext());
+			}catch(final Exception e){
+				HttpServer.LOG.error("Exception in handling request.", e);
+			}finally{
+				try{
+					this.connection.shutdown();
+				}catch(final IOException e){
+					HttpServer.LOG.error("Cannot close connection.", e);
+				}
 			}
 		}
 	}

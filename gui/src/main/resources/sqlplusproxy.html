@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Test</title>
+<script type="text/javascript" src="js/jquery-2.1.3.min.js"></script>
+<script type="text/javascript" src="js/webclient.js"></script>
+<link type="text/css" href="css/webclient.css"></link>
+<style type="text/css">
+.webclient .input {
+	background-color: lightblue;
+	min-width: 1em;
+}
+.part {
+	display: inline-block;
+	float: left;
+}
+</style>
+<script type="text/javascript">
+	var test = test || {};
+	test.send = function(data){
+		$.ajax({
+			url : "/sqlplusproxy/ajax",
+			method : "POST",
+			data : data
+		}).done(function(data, textStatus, jqXHR){
+			var start = 0;
+			var index = data.indexOf('\n', start);
+			var $a = $('.webclient .input');
+			while(index >= 0){
+				$a.before('<div class="part">' + data.substring(start, index) + '</div>', '<br />')
+				start = index+1;
+				index = data.indexOf('\n', start);
+			}
+			if(start < data.length){
+				$a.before('<div class="part">' + data.substring(start, index) + '</div>')
+			}
+		});
+	}
+
+	test.poll = function(){
+		test.send("@POLL");
+		setTimeout("test.poll()", 500);
+	}
+	$(function(){
+		test.poll();
+	});
+</script>
+</head>
+<body>
+	<div class="webclient">
+		<div class="input"></div>
+	</div>
+</body>
+</html>
