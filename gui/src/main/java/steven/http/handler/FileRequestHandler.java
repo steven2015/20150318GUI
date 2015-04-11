@@ -1,7 +1,7 @@
 /**
  *
  */
-package steven.http;
+package steven.http.handler;
 
 import java.io.File;
 import java.io.IOException;

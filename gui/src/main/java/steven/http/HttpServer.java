@@ -10,7 +10,6 @@ import org.apache.http.HttpConnectionFactory;
 import org.apache.http.HttpServerConnection;
 import org.apache.http.impl.DefaultBHttpServerConnection;
 import org.apache.http.impl.DefaultBHttpServerConnectionFactory;
-import org.apache.http.protocol.BasicHttpContext;
 import org.apache.http.protocol.HttpProcessor;
 import org.apache.http.protocol.HttpProcessorBuilder;
 import org.apache.http.protocol.HttpRequestHandler;
@@ -31,10 +30,12 @@ public class HttpServer{
 	private static final Logger LOG = LogManager.getLogger();
 	private final int port;
 	private final UriHttpRequestHandlerMapper mapper;
+	private final HttpContextFactory contextFactory;
 
-	public HttpServer(final int port){
+	public HttpServer(final int port, final HttpContextFactory contextFactory){
 		this.port = port;
 		this.mapper = new UriHttpRequestHandlerMapper();
+		this.contextFactory = contextFactory;
 	}
 	public void start() throws IOException{
 		final HttpProcessor httpProcessor = HttpProcessorBuilder.create().add(new ResponseDate()).add(new ResponseServer("WebClient/1.0")).add(new ResponseContent()).add(new ResponseConnControl()).build();
@@ -44,7 +45,7 @@ public class HttpServer{
 		new Thread(() -> {
 			while(!Thread.interrupted()){
 				try{
-					new Thread(new Worker(httpService, connectionFactory.createConnection(serverSocket.accept()))).start();
+					new Thread(new Worker(httpService, connectionFactory.createConnection(serverSocket.accept()), this.contextFactory)).start();
 				}catch(final Exception e){
 					HttpServer.LOG.error("Cannot start a worker thread.", e);
 					break;
@@ -64,20 +65,22 @@ public class HttpServer{
 	private static class Worker implements Runnable{
 		private final HttpService httpService;
 		private final HttpServerConnection connection;
+		private final HttpContextFactory contextFactory;
 
-		Worker(final HttpService httpService, final HttpServerConnection connection){
+		Worker(final HttpService httpService, final HttpServerConnection connection, final HttpContextFactory contextFactory){
 			this.httpService = httpService;
 			this.connection = connection;
+			this.contextFactory = contextFactory;
 		}
 		@Override
 		public void run(){
 			try{
-				this.httpService.handleRequest(this.connection, new BasicHttpContext());
+				this.httpService.handleRequest(this.connection, this.contextFactory.createContext());
 			}catch(final Exception e){
 				HttpServer.LOG.error("Exception in handling request.", e);
 			}finally{
 				try{
-					this.connection.shutdown();
+					this.connection.close();
 				}catch(final IOException e){
 					HttpServer.LOG.error("Cannot close connection.", e);
 				}

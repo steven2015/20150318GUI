@@ -10,7 +10,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -93,43 +92,5 @@ public class LocalProcess implements Closeable{
 	public void send(final String s) throws IOException{
 		this.writer.write(s);
 		this.writer.flush();
-	}
-	public static final void main(final String[] args) throws Exception{
-		final String charset = "BIG5";
-		final File workingDirectory = null;
-		final Map<String, String> environment = new HashMap<>();
-		try(final LocalProcess p = new LocalProcess(new LocalProcessListener(){
-			@Override
-			public void terminated(int exitCode){
-				System.out.println("*** Process terminated. ***");
-			}
-			@Override
-			public void receivedOutput(char[] buffer, int offset, int length){
-				System.out.print(new String(buffer, offset, length));
-			}
-			@Override
-			public void receivedError(char[] buffer, int offset, int length){
-				System.out.print(new String(buffer, offset, length));
-			}
-		}, charset, workingDirectory, environment, true, "cmd");){
-			new Thread(() -> {
-				try(final InputStreamReader isr = new InputStreamReader(System.in, charset);){
-					final char[] buffer = new char[4096];
-					int size = 0;
-					while(p.isAlive()){
-						while(isr.ready()){
-							Thread.sleep(100);
-							if((size = isr.read(buffer)) >= 0){
-								p.send(buffer, 0, size);
-							}
-						}
-						Thread.sleep(100);
-					}
-				}catch(final IOException | InterruptedException e){
-					// do nothing
-				}
-			}).start();
-			p.waitFor();
-		}
 	}
 }

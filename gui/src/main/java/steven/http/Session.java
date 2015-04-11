@@ -21,7 +21,11 @@ public class Session implements Serializable{
 		this.sessionId = sessionId;
 	}
 	public void setAttribute(final String key, final Object value){
-		this.map.put(key, value);
+		if(value == null){
+			this.map.remove(key);
+		}else{
+			this.map.put(key, value);
+		}
 	}
 	public Object getAttribute(final String key){
 		return this.map.get(key);

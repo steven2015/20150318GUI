@@ -18,8 +18,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestHandler;
 
-import steven.http.FileRequestHandler;
 import steven.http.Session;
+import steven.http.WebClientContext;
+import steven.http.handler.FileRequestHandler;
 import steven.sqlplus.SqlplusProxyClient;
 
 /**
@@ -32,6 +33,7 @@ public enum SqlplusProxyHandler implements HttpRequestHandler{
 
 	@Override
 	public void handle(final HttpRequest request, final HttpResponse response, final HttpContext context) throws HttpException, IOException{
+		final Session session = ((WebClientContext)context).getSession();
 		final String uri = request.getRequestLine().getUri();
 		if(uri.equals("/sqlplusproxy")){
 			FileRequestHandler.INSTANCE.serveFile(request, response, context, SqlplusProxyHandler.PAGE);
@@ -45,7 +47,6 @@ public enum SqlplusProxyHandler implements HttpRequestHandler{
 			if(charset == null){
 				charset = Charset.forName("UTF8");
 			}
-			final Session session = (Session)context.getAttribute(Session.COOKIE_NAME);
 			SqlplusProxyClient client = (SqlplusProxyClient)session.getAttribute("client");
 			if(client == null){
 				client = new SqlplusProxyClient();
@@ -61,19 +62,40 @@ public enum SqlplusProxyHandler implements HttpRequestHandler{
 				}
 				line = sb.toString();
 			}
-			if("@POLL".equals(line) == false){
-				client.send(line, true);
-			}
-			String output = null;
-			do{
-				output = client.readOutput();
-				try{
-					Thread.sleep(100);
-				}catch(final InterruptedException e){
+			if("@POLL".equals(line)){
+				synchronized(session){
+					final Thread thread = (Thread)session.getAttribute("POLL_THREAD");
+					if(thread != null){
+						thread.interrupt();
+					}
+					session.setAttribute("POLL_THREAD", Thread.currentThread());
 				}
-			}while(output.length() == 0);
-			response.setStatusCode(HttpStatus.SC_OK);
-			response.setEntity(new StringEntity(output, ContentType.TEXT_PLAIN));
+				String output = null;
+				do{
+					output = client.readOutput();
+					try{
+						Thread.sleep(100);
+					}catch(final InterruptedException e){
+						break;
+					}
+				}while(output.length() == 0);
+				synchronized(session){
+					final Thread thread = (Thread)session.getAttribute("POLL_THREAD");
+					if(thread == Thread.currentThread()){
+						session.setAttribute("POLL_THREAD", null);
+					}
+				}
+				response.setStatusCode(HttpStatus.SC_OK);
+				response.setEntity(new StringEntity(output, ContentType.TEXT_PLAIN));
+			}else if("@RESTART".equals(line)){
+				client.close();
+				client = new SqlplusProxyClient();
+				session.setAttribute("client", client);
+			}else{
+				client.send(line, true);
+				response.setStatusCode(HttpStatus.SC_OK);
+				response.setEntity(new StringEntity("", ContentType.TEXT_PLAIN));
+			}
 		}else{
 			response.setStatusCode(HttpStatus.SC_BAD_REQUEST);
 			response.setEntity(null);

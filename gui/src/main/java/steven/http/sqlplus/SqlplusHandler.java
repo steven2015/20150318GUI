@@ -18,7 +18,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.protocol.HttpRequestHandler;
 
-import steven.http.FileRequestHandler;
+import steven.http.handler.FileRequestHandler;
 
 import com.google.gson.Gson;
 

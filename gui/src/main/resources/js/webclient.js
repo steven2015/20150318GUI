@@ -1,5 +1,5 @@
 var webclient = webclient || {};
 
 $(function(){
-	$('.webclient .input:first').focus();
+	$('.webclient .input div:first').focus();
 });

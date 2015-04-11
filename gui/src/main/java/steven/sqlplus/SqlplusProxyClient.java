@@ -3,8 +3,10 @@
  */
 package steven.sqlplus;
 
+import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.Writer;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,10 +19,10 @@ import steven.local.LocalProcessListener;
  *
  */
 public class SqlplusProxyClient implements Closeable, LocalProcessListener{
-	private static final String EXECUTABLE = "";
-	private static final String ORACLE_HOME = "";
-	private static final String TNS_ADMIN = "";
-	private static final String SQLPATH = "";
+	private static final String EXECUTABLE = "D:\\Software\\instantclient_10_2\\sqlplus.exe";
+	private static final String ORACLE_HOME = "D:\\Software\\instantclient_10_2";
+	private static final String TNS_ADMIN = "D:\\Software\\instantclient_10_2";
+	private static final String SQLPATH = "D:\\sql";
 	private static final String NLS_LANG = "AMERICAN_AMERICA.UTF8";
 	private static final String DEFAULT_LOGIN = "sys_iv/sys_iv@dev";
 	private final LocalProcess process;
@@ -73,5 +75,26 @@ public class SqlplusProxyClient implements Closeable, LocalProcessListener{
 	}
 	public boolean isAlive(){
 		return this.process.isAlive();
+	}
+	public static final void main(final String[] args) throws IOException{
+		try(final SqlplusProxyClient client = new SqlplusProxyClient(); final InputStreamReader isr = new InputStreamReader(System.in, "UTF8"); final BufferedReader br = new BufferedReader(isr);){
+			new Thread(() -> {
+				while(client.isAlive()){
+					System.out.print(client.readOutput());
+					try{
+						Thread.sleep(1000);
+					}catch(final Exception e){
+					}
+				}
+				System.out.print(client.readOutput());
+			}).start();
+			String line = null;
+			while((line = br.readLine()) != null){
+				client.send(line, true);
+				if("exit".equalsIgnoreCase(line.trim())){
+					break;
+				}
+			}
+		}
 	}
 }
