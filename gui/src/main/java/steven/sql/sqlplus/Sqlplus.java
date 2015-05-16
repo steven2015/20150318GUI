@@ -3,6 +3,9 @@
  */
 package steven.sql.sqlplus;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
@@ -145,8 +148,8 @@ public class Sqlplus implements SqlClient{
 			}
 		}
 	}
-	public static final void main(final String[] args) throws SQLException{
-		try(Sqlplus sqlplus = new Sqlplus();){
+	public static final void main(final String[] args) throws SQLException, IOException{
+		try(final Sqlplus sqlplus = new Sqlplus(); final InputStreamReader isr = new InputStreamReader(System.in); final BufferedReader br = new BufferedReader(isr);){
 			final ExecutionCallback callback = new ExecutionCallback(){
 				@Override
 				public void onRowFetched(final Object[] row){
@@ -201,10 +204,29 @@ public class Sqlplus implements SqlClient{
 					e.printStackTrace();
 				}
 			};
-			sqlplus.connect("alpha", null, null);
+			sqlplus.connect("shpd", null, null);
 			System.out.println("Connected to " + sqlplus.getUsername() + "@" + sqlplus.getDatabase());
 			sqlplus.executeSql("select sysdate from dual", null, callback);
-			sqlplus.rollback();
+			String line = null;
+			while((line = br.readLine()) != null){
+				line = line.trim();
+				if(line.endsWith(";")){
+					line = line.substring(0, line.length() - 1);
+				}
+				if("exit".equalsIgnoreCase(line)){
+					sqlplus.rollback();
+					System.out.println("Disconnected.");
+					break;
+				}else if("commit".equalsIgnoreCase(line)){
+					sqlplus.commit();
+					System.out.println("Committed.");
+				}else if("roll".equalsIgnoreCase(line) || "rollback".equalsIgnoreCase(line)){
+					sqlplus.rollback();
+					System.out.println("Rolled back.");
+				}else{
+					sqlplus.executeSql(line, null, callback);
+				}
+			}
 		}
 	}
 }

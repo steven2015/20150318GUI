@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.JDBCType;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -87,6 +88,11 @@ public class OracleClient implements SqlClient{
 		this.prepare(OracleClient.INTERNAL_DBMS_OUTPUT_DISABLE, "{call dbms_output.disable}");
 		this.prepare(OracleClient.INTERNAL_DBMS_OUTPUT_ENABLE, "{call dbms_output.enable(null)}");
 		this.prepare(OracleClient.INTERNAL_DBMS_OUTPUT_GET_LINE, "{call dbms_output.get_line(?,?)}");
+		{
+			final CallableStatement cs = this.statements.get(OracleClient.INTERNAL_DBMS_OUTPUT_GET_LINE);
+			cs.registerOutParameter(1, JDBCType.VARCHAR.getVendorTypeNumber());
+			cs.registerOutParameter(2, JDBCType.NUMERIC.getVendorTypeNumber());
+		}
 		{
 			final CallableStatement cs = this.statements.get(OracleClient.INTERNAL_DBMS_OUTPUT_ENABLE);
 			cs.execute();
@@ -256,7 +262,7 @@ public class OracleClient implements SqlClient{
 				int parameterIndex = 1;
 				for(final Object p : parameters){
 					if(p instanceof SQLType){
-						cs.registerOutParameter(parameterIndex, (SQLType)p);
+						cs.registerOutParameter(parameterIndex, ((SQLType)p).getVendorTypeNumber());
 						hasOutParameters = true;
 					}else{
 						cs.setObject(parameterIndex, p);
