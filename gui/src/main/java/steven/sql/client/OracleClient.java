@@ -245,15 +245,31 @@ public class OracleClient implements SqlClient{
 		this.execute(cs, parameters, callback);
 	}
 	@Override
-	public void executeSql(final String sql, final Object[] outParameters, final ExecutionCallback callback) throws SQLException{
+	public void execute(final String sql, final ExecutionCallback callback) throws SQLException{
 		try(final CallableStatement cs = this.connection.prepareCall(sql);){
-			this.execute(cs, outParameters, callback);
+			final int length = sql.length();
+			boolean singleQuoted = false;
+			boolean doubleQuoted = false;
+			int parameterCount = 0;
+			for(int i = 0; i < length; i++){
+				final char c = sql.charAt(i);
+				if(c == '\'' && doubleQuoted == false){
+					singleQuoted = !singleQuoted;
+				}else if(c == '\"' && singleQuoted == false){
+					doubleQuoted = !doubleQuoted;
+				}else if((c == '?' || c == ':') && singleQuoted == false && doubleQuoted == false){
+					parameterCount++;
+				}
+			}
+			final Object[] parameters = new Object[parameterCount];
+			for(int i = 0; i < parameterCount; i++){
+				parameters[i] = JDBCType.OTHER;
+			}
+			this.execute(cs, parameters, callback);
 		}
 	}
 	private void execute(final CallableStatement cs, final Object[] parameters, final ExecutionCallback callback) throws SQLException{
 		boolean success = false;
-		int fetchedRows = 0;
-		int affectedRows = 0;
 		final long startTime = System.currentTimeMillis();
 		try{
 			this.currentStatement = cs;
@@ -280,7 +296,7 @@ public class OracleClient implements SqlClient{
 			}
 			if(callback != null){
 				if(result){
-					affectedRows = -1;
+					int fetchedRows = 0;
 					try(ResultSet rs = cs.getResultSet();){
 						final ResultSetMetaData meta = rs.getMetaData();
 						callback.onMetaDataReceived(meta);
@@ -294,31 +310,33 @@ public class OracleClient implements SqlClient{
 							callback.onRowFetched(record);
 							fetchedRows++;
 						}
-						callback.onNoMoreRows();
+						callback.onNoMoreRows(fetchedRows);
 					}
 				}else{
-					fetchedRows = -1;
-					affectedRows = cs.getUpdateCount();
-					callback.onRowAffected(affectedRows);
+					callback.onRowAffected(cs.getUpdateCount(), parameters);
 				}
-				final CallableStatement cs2 = this.statements.get(OracleClient.INTERNAL_DBMS_OUTPUT_GET_LINE);
-				while(true){
-					cs2.executeUpdate();
-					final int status = cs2.getInt(2);
-					if(status == 0){
-						callback.onMessageReceived(cs2.getString(1));
-					}else{
-						break;
+				try{
+					final CallableStatement cs2 = this.statements.get(OracleClient.INTERNAL_DBMS_OUTPUT_GET_LINE);
+					while(true){
+						cs2.executeUpdate();
+						final int status = cs2.getInt(2);
+						if(status == 0){
+							callback.onMessageReceived(cs2.getString(1));
+						}else{
+							break;
+						}
 					}
+					callback.onNoMoreMessages();
+				}catch(final SQLException e){
+					// do nothing
 				}
-				callback.onNoMoreMessages();
 			}
 			success = true;
 		}finally{
 			if(callback != null){
 				final long timeSpent = System.currentTimeMillis() - startTime;
 				if(success){
-					callback.onSuccess(timeSpent, fetchedRows, affectedRows);
+					callback.onSuccess(timeSpent);
 				}else{
 					callback.onFailure(timeSpent);
 				}

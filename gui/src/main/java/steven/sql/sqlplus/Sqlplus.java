@@ -115,12 +115,12 @@ public class Sqlplus implements SqlClient{
 		}
 	}
 	@Override
-	public void executeSql(final String sql, final Object[] outParameters, final ExecutionCallback callback) throws SQLException{
+	public void execute(final String sql, final ExecutionCallback callback) throws SQLException{
 		synchronized(this.lock){
 			if(this.client != null){
 				new Thread(() -> {
 					try{
-						Sqlplus.this.client.executeSql(sql, outParameters, callback);
+						Sqlplus.this.client.execute(sql, callback);
 					}catch(final SQLException e){
 						if(callback != null){
 							callback.onAsyncSQLException(e);
@@ -160,10 +160,12 @@ public class Sqlplus implements SqlClient{
 					System.out.println();
 				}
 				@Override
-				public void onRowAffected(final int affectedRows){
+				public void onRowAffected(final int affectedRows, final Object[] parameters){
+					System.out.println(affectedRows + " rows affected.");
 				}
 				@Override
-				public void onNoMoreRows(){
+				public void onNoMoreRows(final int fetchedRows){
+					System.out.println(fetchedRows + " rows fetched.");
 				}
 				@Override
 				public void onNoMoreMessages(){
@@ -186,13 +188,7 @@ public class Sqlplus implements SqlClient{
 					System.out.println(line);
 				}
 				@Override
-				public void onSuccess(final long timeSpent, final int fetchedRows, final int affectedRows){
-					if(fetchedRows >= 0){
-						System.out.println(fetchedRows + " rows fetched.");
-					}
-					if(affectedRows >= 0){
-						System.out.println(affectedRows + " rows affected.");
-					}
+				public void onSuccess(final long timeSpent){
 					System.out.println("Spent " + timeSpent + " ms.");
 				}
 				@Override
@@ -206,7 +202,7 @@ public class Sqlplus implements SqlClient{
 			};
 			sqlplus.connect("shpd", null, null);
 			System.out.println("Connected to " + sqlplus.getUsername() + "@" + sqlplus.getDatabase());
-			sqlplus.executeSql("select sysdate from dual", null, callback);
+			sqlplus.execute("select sysdate from dual", callback);
 			String line = null;
 			while((line = br.readLine()) != null){
 				line = line.trim();
@@ -224,7 +220,7 @@ public class Sqlplus implements SqlClient{
 					sqlplus.rollback();
 					System.out.println("Rolled back.");
 				}else{
-					sqlplus.executeSql(line, null, callback);
+					sqlplus.execute(line, callback);
 				}
 			}
 		}

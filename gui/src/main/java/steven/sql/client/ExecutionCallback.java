@@ -13,11 +13,11 @@ import java.sql.SQLException;
 public interface ExecutionCallback{
 	public void onMetaDataReceived(ResultSetMetaData meta);
 	public void onRowFetched(Object[] row);
-	public void onNoMoreRows();
-	public void onRowAffected(int affectedRows);
+	public void onNoMoreRows(int fetchedRows);
+	public void onRowAffected(int affectedRows, Object[] parameters);
 	public void onMessageReceived(String line);
 	public void onNoMoreMessages();
-	public void onSuccess(long timeSpent, int fetchedRows, int affectedRows);
+	public void onSuccess(long timeSpent);
 	public void onFailure(long timeSpent);
 	public void onAsyncSQLException(SQLException e);
 }

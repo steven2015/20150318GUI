@@ -18,7 +18,7 @@ public interface SqlClient extends AutoCloseable{
 	public void rollback() throws SQLException;
 	public void prepare(String name, String sql) throws SQLException;
 	public void execute(String name, Object[] parameters, ExecutionCallback callback) throws SQLException;
-	public void executeSql(String sql, Object[] outParameters, ExecutionCallback callback) throws SQLException;
+	public void execute(String sql, ExecutionCallback callback) throws SQLException;
 	public void cancel() throws SQLException;
 	public boolean isActive();
 }
