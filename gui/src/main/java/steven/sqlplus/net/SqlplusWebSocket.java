@@ -35,6 +35,7 @@ public class SqlplusWebSocket extends WebSocket implements SqlplusCallback{
 	@Override
 	public void onWebSocketClose(final int statusCode, final String reason){
 		super.onWebSocketClose(statusCode, reason);
+		this.client.close();
 	}
 	@Override
 	public void onWebSocketText(final String message){

@@ -1,7 +1,7 @@
 /**
  *
  */
-package steven.sqlplus.request;
+package steven.sqlplus.response;
 
 import steven.sqlplus.SqlplusResponse;
 

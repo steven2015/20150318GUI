@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import steven.sqlplus.SqlplusResponse;
-import steven.sqlplus.request.SqlplusUnknownCommandResponse;
+import steven.sqlplus.response.SqlplusUnknownCommandResponse;
 
 /**
  * @author Steven

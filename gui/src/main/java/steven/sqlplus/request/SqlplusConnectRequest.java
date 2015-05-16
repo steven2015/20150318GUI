@@ -3,11 +3,13 @@
  */
 package steven.sqlplus.request;
 
+import steven.sqlplus.SqlplusRequest;
+
 /**
  * @author Steven
  *
  */
-public class SqlplusConnectRequest{
+public class SqlplusConnectRequest implements SqlplusRequest{
 	private final String username;
 	private final String password;
 	private final String database;
